@@ -32,7 +32,7 @@ def write_log_event(message):
     with open(LOG_FILE, 'a') as f:
         f.write(full_message + '\n')
 
-# === Camera class ===
+# Класс для камеры
 class CameraStream:
     def __init__(self, index):
         self.index = index
