@@ -1,0 +1,64 @@
+[2025-05-19 11:38:28] Camera 0 connected.
+[2025-05-19 11:38:28] Camera 1 connected.
+[2025-05-19 11:38:31] [+] Start recording: motion_clips\motion_2025-05-19_11-38-31.avi
+[2025-05-19 11:38:43] Camera 1 disconnected or no frames.
+[2025-05-19 11:38:44] Camera 1 connected.
+[2025-05-19 11:38:44] [*] Stop recording.
+[2025-05-19 11:38:45] [+] Start recording: motion_clips\motion_2025-05-19_11-38-45.avi
+[2025-05-19 11:38:49] [*] Stop recording.
+[2025-05-19 12:08:41] Camera 0 connected.
+[2025-05-19 12:08:43] [+] Start recording: motion_clips\motion_2025-05-19_12-08-43.avi
+[2025-05-19 12:08:55] [*] Stop recording.
+[2025-05-19 12:08:56] [+] Start recording: motion_clips\motion_2025-05-19_12-08-56.avi
+[2025-05-19 12:08:56] Camera 1 connected.
+[2025-05-19 12:09:11] Camera 1 disconnected or no frames.
+[2025-05-19 12:09:12] Camera 1 connected.
+[2025-05-19 12:37:33] Camera 0 connected.
+[2025-05-19 12:37:36] [+] Start recording: motion_clips\motion_2025-05-19_12-37-36.avi
+[2025-05-19 12:38:30] Camera 0 connected.
+[2025-05-19 12:38:35] [+] Start recording: motion_clips\motion_2025-05-19_12-38-35.avi
+[2025-05-19 12:38:38] [*] Stop recording.
+[2025-05-19 12:38:38] [+] Start recording: motion_clips\motion_2025-05-19_12-38-38.avi
+[2025-05-19 14:36:22] Camera 0 connected.
+[2025-05-19 14:36:25] [+] Start recording: motion_clips\motion_2025-05-19_14-36-25.avi
+[2025-05-19 14:36:47] [*] Stop recording.
+[2025-05-19 14:36:48] [+] Start recording: motion_clips\motion_2025-05-19_14-36-48.avi
+[2025-05-19 14:38:14] Camera 0 connected.
+[2025-05-19 14:38:17] [+] Start recording: motion_clips\motion_2025-05-19_14-38-17.avi
+[2025-05-19 14:41:09] Camera 0 connected.
+[2025-05-19 14:41:12] [+] Start recording: motion_clips\motion_2025-05-19_14-41-12.avi
+[2025-05-19 14:41:20] Camera 1 connected.
+[2025-05-19 14:41:55] Camera 1 disconnected or no frames.
+[2025-05-19 14:41:55] Camera 1 connected.
+[2025-05-20 18:15:23] Camera 0 connected.
+[2025-05-20 18:15:27] [+] Start recording: motion_clips\motion_2025-05-20_18-15-27.avi
+[2025-05-20 18:16:04] Camera 1 connected.
+[2025-05-20 18:16:09] Camera 1 disconnected or no frames.
+[2025-05-20 18:16:24] [*] Stop recording.
+[2025-05-20 18:16:25] Camera 1 connected.
+[2025-05-20 18:16:28] [+] Start recording: motion_clips\motion_2025-05-20_18-16-28.avi
+[2025-05-20 18:16:30] Camera 1 disconnected or no frames.
+[2025-05-20 18:17:14] Camera 0 connected.
+[2025-05-20 18:17:19] [+] Start recording: motion_clips\motion_2025-05-20_18-17-19.avi
+[2025-05-20 18:17:24] [*] Stop recording.
+[2025-05-20 18:17:25] Camera 1 connected.
+[2025-05-20 18:17:28] [+] Start recording: motion_clips\motion_2025-05-20_18-17-28.avi
+[2025-05-20 18:38:18] Camera 0 connected.
+[2025-05-20 18:38:56] Camera 0 connected.
+[2025-05-20 18:39:17] Camera 0 connected.
+[2025-05-20 18:39:19] [+] Start recording: motion_clips\motion_2025-05-20_18-39-19.avi
+[2025-05-20 18:39:27] [-] Stop recording.
+[2025-05-20 18:39:28] [+] Start recording: motion_clips\motion_2025-05-20_18-39-28.avi
+[2025-05-20 18:39:37] Camera 1 connected.
+[2025-05-20 18:39:41] [-] Stop recording.
+[2025-05-20 18:39:45] [+] Start recording: motion_clips\motion_2025-05-20_18-39-45.avi
+[2025-05-20 18:40:45] Camera 0 connected.
+[2025-05-20 18:40:49] [+] Start recording: motion_clips\motion_2025-05-20_18-40-49.avi
+[2025-05-20 18:40:54] [-] Stop recording.
+[2025-05-20 18:40:55] Camera 1 connected.
+[2025-05-20 18:40:56] [+] Start recording: motion_clips\motion_2025-05-20_18-40-56.avi
+[2025-05-20 18:41:07] [-] Stop recording.
+[2025-05-20 18:41:53] Camera 0 connected.
+[2025-05-20 18:41:54] Camera 1 connected.
+[2025-05-20 18:41:57] [+] Start recording: motion_clips\motion_2025-05-20_18-41-57.avi
+[2025-05-20 18:42:08] [-] Stop recording.
