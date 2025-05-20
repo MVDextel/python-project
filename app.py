@@ -11,7 +11,7 @@ import time
 # максимальное количество камер
 WINDOW_NAME = 'Dynamic Multi-Camera Surveillance'
 SAVE_DIR = 'motion_clips'
-LOG_FILE = os.path.join(SAVE_DIR, 'motion.log.txt')
+LOG_FILE = os.path.join(SAVE_DIR, 'motion_log.txt')
 MAX_CAMERAS = 4
 
 os.makedirs(SAVE_DIR, exist_ok=True)
