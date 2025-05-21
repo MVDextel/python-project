@@ -23,3 +23,11 @@ Visi faili (video un žurnāli) tiek saglabāti apakšmapē:
 
 ## Terminalā:
 pip install pyqt6 opencv-python numpy pygrabber
+
+## Source:
+https://doc.qt.io/qtforpython-6/
+https://stackoverflow.com/questions/tagged/python
+https://docs.python.org/3/tutorial/index.html
+https://realpython.com/python-logging/
+https://opencv.org/
+https://pypi.org/project/capture-devices/

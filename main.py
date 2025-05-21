@@ -77,7 +77,7 @@ class CameraWidget(QtWidgets.QLabel):
     def open_camera(self):
         if self.cap:
             self.cap.release()
-        self.cap = cv2.VideoCapture(self.index, cv2.CAP_MSMF)
+        self.cap = cv2.VideoCapture(self.index, cv2.CAP_DSHOW)
         self.available = self.cap.isOpened()
         if self.available:
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, SINGLE_CAM_SIZE[0])
@@ -135,7 +135,7 @@ class CameraWidget(QtWidgets.QLabel):
         bytes_per_line = ch * w
         qt_image = QtGui.QImage(rgb_frame.data, w, h, bytes_per_line, QtGui.QImage.Format.Format_RGB888)
         pixmap = QtGui.QPixmap.fromImage(qt_image)
-        self.setPixmap(pixmap.scaled(self.size(), QtCore.Qt.AspectRatioMode.IgnoreAspectRatio, QtCore.Qt.TransformationMode.FastTransformation))
+        self.setPixmap(pixmap.scaled(self.size(), QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.FastTransformation))
 
     # Начало видео
     def start_recording(self):
@@ -234,11 +234,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         for idx, name in available_cams.items():
             if idx not in self.cameras and len(self.cameras) < MAX_CAMERAS:
+                cam_count = len(self.cameras)
+                row = cam_count // 2
+                col = cam_count % 2
+
                 cam_widget = CameraWidget(idx, device_name=name, parent=self.widget)
-                self.cameras[idx] = cam_widget
-                row = len(self.cameras) // 2
-                col = len(self.cameras) % 2
                 self.grid.addWidget(cam_widget, row, col)
+                self.cameras[idx] = cam_widget
 
     def closeEvent(self, event):
         for cam in self.cameras.values():
