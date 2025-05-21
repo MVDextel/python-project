@@ -1,201 +1,253 @@
-import cv2
-import numpy as np
-import datetime
+import sys
 import os
-import math
-import time
+import datetime  #текущее время
+import cv2  # OpenCV
+import numpy as np
+from PyQt6 import QtCore, QtGui, QtWidgets  # GUI
+from pygrabber.dshow_graph import FilterGraph  # Получение списка камер
 
-# Название окна, 
-# название папки для сохранения видео,
-# название лог файла,
-# максимальное количество камер
-WINDOW_NAME = 'Dynamic Multi-Camera Surveillance'
-SAVE_DIR = 'motion_clips'
-LOG_FILE = os.path.join(SAVE_DIR, 'motion_log.txt')
-MAX_CAMERAS = 4
+MAX_CAMERAS = 4  # Максимальное количество камер
+SINGLE_CAM_SIZE = (320, 240)  # Размер для отображения одной камеры
 
+# НЕ ТРОГАТЬ
+# Это необходимо для корректной работы как при запуске .py, так и .exe
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Папка для сохранения видео и логов
+SAVE_DIR = os.path.join(BASE_DIR, 'motion_clips')
 os.makedirs(SAVE_DIR, exist_ok=True)
 
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-single_cam_size = (320, 240)
-motion_delay = 60
+fourcc = cv2.VideoWriter_fourcc(*'XVID')  # Формат записи AVI
+motion_delay = 60  # Количество кадров после движения до остановки записи, чтобы резкого обрыва не было
 
-font = cv2.FONT_HERSHEY_SIMPLEX
-font_scale = 0.5
-font_color = (255, 255, 255)
-font_thickness = 1
+# Цвета для наложения текста
+font_color = QtGui.QColor(255, 255, 0)  # Цвет текста (сейчас зеленый)
+font_bg_color = QtGui.QColor(0, 0, 0, 160)  # Цвет фона текста (чёрный, прозрачный)
 
+# Функция для логов
 def write_log_event(message):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     full_message = f"[{timestamp}] {message}"
-    print(full_message)
-    with open(LOG_FILE, 'a') as f:
+    print(full_message)  # Лог в консоль
+    with open(os.path.join(SAVE_DIR, 'motion_log.txt'), 'a', encoding='utf-8') as f:
         f.write(full_message + '\n')
 
-# Класс для камеры
-class CameraStream:
-    def __init__(self, index):
+# Список доступных камер
+def get_available_cameras_pygrabber():
+    devices = FilterGraph().get_input_devices()
+    cams = {}
+    for idx, name in enumerate(devices):
+        cams[idx] = name
+    return cams  # индекс -> имя камеры
+
+# Класс камеры: QLabel + видеопоток + обработка движения
+class CameraWidget(QtWidgets.QLabel):
+    def __init__(self, index, device_name=None, parent=None):
+        super().__init__(parent)
         self.index = index
-        self.capture = cv2.VideoCapture(index, cv2.CAP_DSHOW)
-        self.available_cam = self.capture.isOpened()
+        self.device_name = device_name or f"Cam{index+1}"
+        self.cap = None
+        self.available = False  # Изначально камера не доступна
+
+        # Обнаружение движения с помощью BackgroundSubtractor
         self.motion_detector = cv2.createBackgroundSubtractorMOG2()
         self.frame_count = 0
-        self.warmup_frames = 50
+        self.warmup_frames = 50  # Количество кадров до того, как будет начата проверка движения(чтобы не было ложных записей)
+        self.motion_timer = 0  # Таймер задержки после окончания движения
+        self.recording = False
+        self.out = None 
 
-    def get_frame(self):
-        if not self.available_cam or not self.capture.isOpened():
-            self.available_cam = False
-            return self._blank_frame("No Data"), False
+        # QLabel настройка для отображения всего окна без отступов
+        self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        self.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setStyleSheet("background-color: black;")
 
-        is_valid, frame = self.capture.read()
-        if not is_valid:
-            self.available_cam = False
-            return self._blank_frame("No Data"), False
+        self.open_camera()
 
-        frame = cv2.resize(frame, single_cam_size)
+        # Таймер для обновления кадра 
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self.update_frame)
+        self.timer.start(30) # каждые ~30 мс
+
+    # Подключаем камеру
+    def open_camera(self):
+        if self.cap:
+            self.cap.release()
+        self.cap = cv2.VideoCapture(self.index, cv2.CAP_MSMF)
+        self.available = self.cap.isOpened()
+        if self.available:
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, SINGLE_CAM_SIZE[0])
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, SINGLE_CAM_SIZE[1])
+            write_log_event(f"Camera '{self.device_name}' connected.")
+            self.frame_count = 0
+        else:
+            write_log_event(f"Camera '{self.device_name}' NOT available.")
+
+    # Цикл обновления кадра
+    def update_frame(self):
+        if not self.available:
+            self.clear()
+            return
+
+        ret, frame = self.cap.read()
+        if not ret:
+            self.available = False
+            self.clear()
+            write_log_event(f"Camera '{self.device_name}' disconnected or no frames.")
+            self.cap.release()
+            self.cap = None
+            return
+
+        frame = cv2.resize(frame, SINGLE_CAM_SIZE)
         self.frame_count += 1
 
+        # Обнаружение движения
         if self.frame_count <= self.warmup_frames:
             self.motion_detector.apply(frame)
-            return frame, False
-
-        fgmask = self.motion_detector.apply(frame)
-        fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
-        contours, _ = cv2.findContours(fgmask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        motion_detected = any(cv2.contourArea(cnt) > 500 for cnt in contours)
+            motion_detected = False
+        else:
+            fgmask = self.motion_detector.apply(frame)
+            fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+            contours, _ = cv2.findContours(fgmask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            motion_detected = any(cv2.contourArea(c) > 500 for c in contours)
 
         if motion_detected:
-            cv2.rectangle(frame, (0, 0), (single_cam_size[0] - 1, single_cam_size[1] - 1), (0, 0, 255), 2)
+            cv2.rectangle(frame, (0, 0), (SINGLE_CAM_SIZE[0] - 1, SINGLE_CAM_SIZE[1] - 1), (0, 0, 255), 2)
+            self.motion_timer = motion_delay
+            if not self.recording:
+                self.start_recording()
 
-        cam_label = f"Cam {self.index}"
-        cv2.putText(frame, cam_label, (5, single_cam_size[1] - 5), font, 0.5, (255, 255, 0), 1)
-        return frame, motion_detected
+        if self.motion_timer > 0:
+            self.motion_timer -= 1
+        elif self.recording:
+            self.stop_recording()
 
-    def _blank_frame(self, text):
-        blank = np.zeros((single_cam_size[1], single_cam_size[0], 3), dtype=np.uint8)
-        (w, h), _ = cv2.getTextSize(text, font, 1, 2)
-        x = (single_cam_size[0] - w) // 2
-        y = (single_cam_size[1] + h) // 2
-        cv2.putText(blank, text, (x, y), font, 1, (255, 255, 255), 2)
-        return blank
+        if self.recording and self.out is not None:
+            self.out.write(frame)
 
+        # Отображаем на QLabel
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_frame.shape
+        bytes_per_line = ch * w
+        qt_image = QtGui.QImage(rgb_frame.data, w, h, bytes_per_line, QtGui.QImage.Format.Format_RGB888)
+        pixmap = QtGui.QPixmap.fromImage(qt_image)
+        self.setPixmap(pixmap.scaled(self.size(), QtCore.Qt.AspectRatioMode.IgnoreAspectRatio, QtCore.Qt.TransformationMode.FastTransformation))
+
+    # Начало видео
+    def start_recording(self):
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        filename = os.path.join(SAVE_DIR, f"motion_{timestamp}.avi")
+        self.out = cv2.VideoWriter(filename, fourcc, 20.0, SINGLE_CAM_SIZE)
+        self.recording = True
+        write_log_event(f"[+] Camera '{self.device_name}' start recording: {filename}")
+
+    # Остановка
+    def stop_recording(self):
+        write_log_event(f"[-] Camera '{self.device_name}' stop recording.")
+        self.recording = False
+        if self.out:
+            self.out.release()
+            self.out = None
+
+    # Освобождаем ресурсы
     def release(self):
-        if self.capture and self.capture.isOpened():
-            self.capture.release()
+        if self.cap and self.cap.isOpened():
+            self.cap.release()
+        self.cap = None
+        if self.out:
+            self.out.release()
+            self.out = None
+        self.recording = False
+        self.timer.stop()
 
-# Управление камерами
-active_cams = {}
-last_cam_check = 0
+    # Наложение текста на всю запись
+    def paintEvent(self, event):
+        if self.pixmap() is None:
+            return
+        super().paintEvent(event)
+        painter = QtGui.QPainter(self)
+        if not painter.isActive():
+            return
 
-def add_camera(index):
-    if index in active_cams:
-        return
-    stream = CameraStream(index)
-    if stream.available_cam:
-        write_log_event(f"Camera {index} connected.")
-        active_cams[index] = stream
-    else:
-        stream.release()
+        painter.setRenderHint(QtGui.QPainter.RenderHint.TextAntialiasing)
+        font = QtGui.QFont('Arial', 12, QtGui.QFont.Weight.Bold)
+        painter.setFont(font)
 
-def update_active_cams():
-    global active_cams, last_cam_check
+        metrics = QtGui.QFontMetrics(font)
+        total_cameras = len(self.parent().findChildren(CameraWidget)) if self.parent() else 1
+        text = f"Cam{self.index + 1}" if total_cameras == 1 else self.device_name
 
-    current_time = time.time()
-    if current_time - last_cam_check < 5:
-        return
+        rect = metrics.boundingRect(text).adjusted(-4, -2, 4, 2)
+        x = 2
+        y = self.height() - 5
+        painter.fillRect(x - 2, y - rect.height(), rect.width() + 4, rect.height() + 4, font_bg_color)
+        painter.setPen(font_color)
+        painter.drawText(x, y, text)
 
-    to_remove = []
-    for idx, stream in active_cams.items():
-        ret, _ = stream.capture.read()
-        if not stream.capture.isOpened() or not ret:
-            write_log_event(f"Camera {idx} disconnected or no frames.")
-            stream.release()
-            to_remove.append(idx)
-    for idx in to_remove:
-        del active_cams[idx]
+        if self.index == 0:
+            time_text = datetime.datetime.now().strftime("%H:%M:%S")
+            time_rect = metrics.boundingRect(time_text).adjusted(-4, -2, 4, 2)
+            x_time = 2
+            y_time = time_rect.height() + 2
+            painter.fillRect(x_time - 2, 0, time_rect.width() + 4, time_rect.height() + 4, font_bg_color)
+            painter.drawText(x_time, y_time, time_text)
 
-    for i in range(MAX_CAMERAS):
-        if i not in active_cams:
-            add_camera(i)
+        painter.end()
 
-    last_cam_check = current_time
+# Окно приложения
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Python-project")
+        self.setMinimumSize(SINGLE_CAM_SIZE[0] * 2, SINGLE_CAM_SIZE[1] * 2)
 
+        self.widget = QtWidgets.QWidget()
+        self.setCentralWidget(self.widget)
 
-# Создать окно с камерами
-cv2.namedWindow(WINDOW_NAME)
-recording = False
-out = None
-motion_timer = 0
+        self.grid = QtWidgets.QGridLayout(self.widget)
+        self.grid.setSpacing(0)
+        self.grid.setContentsMargins(0, 0, 0, 0)
 
-for i in range(MAX_CAMERAS):
-    add_camera(i)
+        self.cameras = {}
 
-# Главный цикл
-while True:
-    try:
-        if cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
-            break
-    except cv2.error:
-        break
+        # Таймер на автоматическое обновление списка камер
+        self.refresh_cameras_timer = QtCore.QTimer(self)
+        self.refresh_cameras_timer.timeout.connect(self.refresh_cameras)
+        self.refresh_cameras_timer.start(5000)  # Каждые 5 секунд
 
-    update_active_cams()
+        self.refresh_cameras()
 
-    frames = []
-    motion_status = []
+    # Подключение/отключение камер (как же я намучился с этой...)
+    def refresh_cameras(self):
+        available_cams = get_available_cameras_pygrabber()
 
-    for stream in active_cams.values():
-        frame, motion = stream.get_frame()
-        frames.append(frame)
-        motion_status.append(motion)
+        for idx in list(self.cameras.keys()):
+            if idx not in available_cams:
+                cam_widget = self.cameras.pop(idx)
+                self.grid.removeWidget(cam_widget)
+                cam_widget.release()
+                cam_widget.deleteLater()
 
-    n = len(frames)
-    if n == 0:
-        blank = np.zeros((240, 320, 3), dtype=np.uint8)
-        cv2.putText(blank, "No Cameras", (50, 130), font, 1, (255, 255, 255), 2)
-        cv2.imshow(WINDOW_NAME, blank)
-        if cv2.waitKey(30) & 0xFF == 27:
-            break
-        continue
+        for idx, name in available_cams.items():
+            if idx not in self.cameras and len(self.cameras) < MAX_CAMERAS:
+                cam_widget = CameraWidget(idx, device_name=name, parent=self.widget)
+                self.cameras[idx] = cam_widget
+                row = len(self.cameras) // 2
+                col = len(self.cameras) % 2
+                self.grid.addWidget(cam_widget, row, col)
 
-    cols = math.ceil(math.sqrt(n))
-    rows = math.ceil(n / cols)
-    padded_frames = frames + [np.zeros_like(frames[0])] * (rows * cols - n)
-    grid_rows = [np.hstack(padded_frames[i*cols:(i+1)*cols]) for i in range(rows)]
-    grid_frame = np.vstack(grid_rows)
+    def closeEvent(self, event):
+        for cam in self.cameras.values():
+            cam.release()
+        super().closeEvent(event)
 
-    # Для времени
-    time_text_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cv2.putText(grid_frame, time_text_now, (10, 20), font, font_scale, font_color, font_thickness, cv2.LINE_AA)
-
-    # Запись видео при движении
-    if any(motion_status):
-        if not recording:
-            timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-            filename = os.path.join(SAVE_DIR, f"motion_{timestamp}.avi")
-            out = cv2.VideoWriter(filename, fourcc, 20.0, (grid_frame.shape[1], grid_frame.shape[0]))
-            write_log_event(f"[+] Start recording: {filename}")
-            recording = True
-        motion_timer = motion_delay
-    elif recording:
-        motion_timer -= 1
-        if motion_timer <= 0:
-            write_log_event("[-] Stop recording.")
-            recording = False
-            if out:
-                out.release()
-                out = None
-
-    if recording and out:
-        out.write(grid_frame)
-
-    cv2.imshow(WINDOW_NAME, grid_frame)
-
-    if cv2.waitKey(30) & 0xFF == 27:
-        break
-
-# Освобождает все камеры
-for stream in active_cams.values():
-    stream.release()
-if out:
-    out.release()
-cv2.destroyAllWindows()
+# Запуск программы
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
