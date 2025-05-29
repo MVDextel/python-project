@@ -44,9 +44,9 @@ Lai izveidotu izpildāmo failu Windows sistēmām:
 
 
 #Resursi un dokumentācija
-https://doc.qt.io/qtforpython-6/
-https://docs.python.org/3/
-https://opencv.org/
-https://realpython.com/python-logging/
-https://pypi.org/project/pygrabber/
-https://stackoverflow.com/questions/tagged/python
+- https://doc.qt.io/qtforpython-6/
+- https://docs.python.org/3/
+- https://opencv.org/
+- https://realpython.com/python-logging/
+- https://pypi.org/project/pygrabber/
+- https://stackoverflow.com/questions/tagged/python
